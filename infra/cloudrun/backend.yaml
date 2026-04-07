@@ -1,0 +1,55 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: revmap-backend
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "10"
+    spec:
+      serviceAccountName: revmap-sa@PROJECT_ID.iam.gserviceaccount.com
+      containers:
+        - image: gcr.io/PROJECT_ID/revmap-backend:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: revmap-secrets
+                  key: DATABASE_URL
+            - name: NEO4J_URI
+              valueFrom:
+                secretKeyRef:
+                  name: revmap-secrets
+                  key: NEO4J_URI
+            - name: NEO4J_USER
+              valueFrom:
+                secretKeyRef:
+                  name: revmap-secrets
+                  key: NEO4J_USER
+            - name: NEO4J_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: revmap-secrets
+                  key: NEO4J_PASSWORD
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: revmap-secrets
+                  key: SECRET_KEY
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: revmap-secrets
+                  key: GEMINI_API_KEY
+            - name: GCS_BUCKET_NAME
+              value: revmap-lectures
+          resources:
+            limits:
+              cpu: "2"
+              memory: 1Gi

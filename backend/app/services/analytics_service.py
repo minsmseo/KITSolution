@@ -1,0 +1,102 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, distinct
+from app.models.user import User, UserRole
+from app.models.lecture import Lecture, Enrollment
+from app.models.assignment import AssignmentGeneration, Submission
+from app.schemas.analytics import LectureParticipation, InstructorAnalytics, AnalyticsSummary
+
+
+async def get_all_analytics(db: AsyncSession) -> AnalyticsSummary:
+    # Get all instructors
+    result = await db.execute(
+        select(User).where(User.role == UserRole.instructor)
+    )
+    instructors = result.scalars().all()
+
+    analytics_list = []
+    for instructor in instructors:
+        inst_analytics = await get_instructor_analytics(instructor.id, db)
+        analytics_list.append(inst_analytics)
+
+    return AnalyticsSummary(instructors=analytics_list)
+
+
+async def get_instructor_analytics(instructor_id: str, db: AsyncSession) -> InstructorAnalytics:
+    result = await db.execute(select(User).where(User.id == instructor_id))
+    instructor = result.scalar_one_or_none()
+
+    result = await db.execute(
+        select(Lecture).where(Lecture.instructor_id == instructor_id)
+    )
+    lectures = result.scalars().all()
+
+    lecture_stats = []
+    total_students_all = 0
+    total_participating_all = 0
+
+    for lecture in lectures:
+        stats = await get_lecture_participation(lecture.id, db)
+        lecture_stats.append(stats)
+        total_students_all += stats.total_students
+        total_participating_all += stats.participating_students
+
+    overall_rate = (
+        total_participating_all / total_students_all if total_students_all > 0 else 0.0
+    )
+
+    return InstructorAnalytics(
+        instructor_id=instructor_id,
+        instructor_name=instructor.name if instructor else "Unknown",
+        instructor_email=instructor.email if instructor else "",
+        lectures=lecture_stats,
+        total_students=total_students_all,
+        total_participating=total_participating_all,
+        overall_participation_rate=round(overall_rate, 4),
+    )
+
+
+async def get_lecture_participation(lecture_id: str, db: AsyncSession) -> LectureParticipation:
+    result = await db.execute(select(Lecture).where(Lecture.id == lecture_id))
+    lecture = result.scalar_one_or_none()
+
+    # Total enrolled students
+    total_result = await db.execute(
+        select(func.count(Enrollment.id)).where(Enrollment.lecture_id == lecture_id)
+    )
+    total_students = total_result.scalar() or 0
+
+    # Students who both generated AND submitted
+    submitted_student_ids = (
+        select(distinct(Submission.student_id)).where(Submission.lecture_id == lecture_id)
+    )
+    generated_and_submitted = await db.execute(
+        select(func.count(distinct(AssignmentGeneration.student_id))).where(
+            AssignmentGeneration.lecture_id == lecture_id,
+            AssignmentGeneration.student_id.in_(submitted_student_ids),
+        )
+    )
+    participating_students = generated_and_submitted.scalar() or 0
+
+    # Total assignments generated
+    gen_result = await db.execute(
+        select(func.count(AssignmentGeneration.id)).where(AssignmentGeneration.lecture_id == lecture_id)
+    )
+    total_generated = gen_result.scalar() or 0
+
+    # Total submissions
+    sub_result = await db.execute(
+        select(func.count(Submission.id)).where(Submission.lecture_id == lecture_id)
+    )
+    total_submissions = sub_result.scalar() or 0
+
+    participation_rate = participating_students / total_students if total_students > 0 else 0.0
+
+    return LectureParticipation(
+        lecture_id=lecture_id,
+        lecture_title=lecture.title if lecture else "Unknown",
+        total_students=total_students,
+        participating_students=participating_students,
+        participation_rate=round(participation_rate, 4),
+        total_assignments_generated=total_generated,
+        total_submissions=total_submissions,
+    )
