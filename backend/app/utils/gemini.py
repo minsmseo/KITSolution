@@ -1,14 +1,22 @@
-import google.generativeai as genai
+from google import genai
 from app.config import get_settings
 import json
 import re
+import os
+import asyncio
 
 settings = get_settings()
 
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", settings.GEMINI_API_KEY)
 
-def _get_model():
-    genai.configure(api_key=settings.GEMINI_API_KEY)
-    return genai.GenerativeModel(settings.GEMINI_MODEL)
+_client = None
+
+
+def _get_client():
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=GEMINI_API_KEY)
+    return _client
 
 
 async def generate_assignment(
@@ -47,9 +55,17 @@ Requirements:
 
 Generate the assignment now:"""
 
-    model = _get_model()
-    response = model.generate_content(prompt)
-    return response.text
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    client = _get_client()
+    for attempt in range(4):
+        try:
+            response = client.models.generate_content(model=model_name, contents=prompt)
+            return response.text
+        except Exception as e:
+            if attempt < 3 and ("503" in str(e) or "UNAVAILABLE" in str(e) or "429" in str(e)):
+                await asyncio.sleep(5 * (attempt + 1))
+                continue
+            raise
 
 
 async def extract_knowledge_graph(lecture_text: str) -> dict:
@@ -71,23 +87,20 @@ Rules:
 - Use descriptive but concise labels
 - Avoid duplicate concepts
 - Node IDs should be snake_case versions of labels
+- Return ONLY the JSON object, no markdown
 
 Lecture Text:
-{lecture_text[:8000]}
+{lecture_text[:8000]}"""
 
-Return only the JSON object, no markdown, no explanation:"""
-
-    model = _get_model()
-    response = model.generate_content(prompt)
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    client = _get_client()
+    response = client.models.generate_content(model=model_name, contents=prompt)
     raw = response.text.strip()
-
-    # Strip markdown code fences if present
     raw = re.sub(r"^```(?:json)?\n?", "", raw)
     raw = re.sub(r"\n?```$", "", raw)
 
     graph_data = json.loads(raw)
 
-    # Normalize: deduplicate nodes by label
     seen_labels = {}
     clean_nodes = []
     for node in graph_data.get("nodes", []):
@@ -97,8 +110,6 @@ Return only the JSON object, no markdown, no explanation:"""
             clean_nodes.append(node)
 
     graph_data["nodes"] = clean_nodes
-
-    # Remove edges referencing non-existent nodes
     valid_ids = {n["id"] for n in clean_nodes}
     graph_data["edges"] = [
         e for e in graph_data.get("edges", [])

@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 
 
 class LectureParticipation(BaseModel):
@@ -24,3 +25,20 @@ class InstructorAnalytics(BaseModel):
 
 class AnalyticsSummary(BaseModel):
     instructors: list[InstructorAnalytics]
+
+
+class StudentEngagement(BaseModel):
+    student_id: str
+    student_name: str
+    student_email: str
+    assignments_generated: int
+    submissions: int
+    last_activity: Optional[datetime] = None
+    engagement_level: str  # "high" | "medium" | "low" | "none"
+
+
+class LectureStudentAnalytics(BaseModel):
+    lecture_id: str
+    lecture_title: str
+    total_students: int
+    students: list[StudentEngagement]

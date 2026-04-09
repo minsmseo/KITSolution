@@ -12,7 +12,11 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting RevMap API")
-    await init_db()
+    try:
+        await init_db()
+        logger.info("Database initialized")
+    except Exception as e:
+        logger.error("DB init failed (will retry on first request)", error=str(e))
     yield
     await close_driver()
     logger.info("RevMap API shut down")
@@ -27,7 +31,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

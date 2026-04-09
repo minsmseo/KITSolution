@@ -52,6 +52,7 @@ export const assignmentAPI = {
   generate: (lectureId, data) => api.post(`/lectures/${lectureId}/assignments/generate`, data),
   list: (lectureId) => api.get(`/lectures/${lectureId}/assignments`),
   submit: (assignmentId, answerText) => api.post(`/assignments/${assignmentId}/submit`, { answer_text: answerText }),
+  instructorStudents: (lectureId) => api.get(`/lectures/${lectureId}/instructor/students`),
 }
 
 // Analytics
@@ -59,6 +60,7 @@ export const analyticsAPI = {
   allInstructors: () => api.get('/analytics/instructors'),
   instructor: (id) => api.get(`/analytics/instructors/${id}`),
   lecture: (id) => api.get(`/analytics/lectures/${id}`),
+  lectureStudents: (id) => api.get(`/analytics/lectures/${id}/students`),
 }
 
 export default api

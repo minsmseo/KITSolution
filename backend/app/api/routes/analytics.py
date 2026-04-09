@@ -7,6 +7,7 @@ from app.services.analytics_service import (
     get_all_analytics,
     get_instructor_analytics,
     get_lecture_participation,
+    get_lecture_student_analytics,
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -36,3 +37,12 @@ async def lecture_analytics(
     db: AsyncSession = Depends(get_db),
 ):
     return await get_lecture_participation(lecture_id, db)
+
+
+@router.get("/lectures/{lecture_id}/students")
+async def lecture_students_analytics(
+    lecture_id: str,
+    manager: User = Depends(require_manager),
+    db: AsyncSession = Depends(get_db),
+):
+    return await get_lecture_student_analytics(lecture_id, db)

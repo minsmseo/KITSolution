@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../hooks/useAuth.jsx'
 import { Network } from 'lucide-react'
 
 const ROLES = ['student', 'instructor', 'manager']
@@ -34,7 +34,7 @@ export default function Signup() {
             <Network className="text-white" size={24} />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Create your account</h1>
-          <p className="text-slate-500 mt-1 text-sm">Start your personalized review journey</p>
+          <p className="text-slate-500 mt-1 text-sm">Start your ReNode review journey</p>
         </div>
 
         <div className="card p-6">
