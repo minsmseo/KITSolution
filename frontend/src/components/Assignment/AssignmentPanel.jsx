@@ -13,112 +13,149 @@ const DIFFICULTIES = ['easy', 'medium', 'hard']
 
 // ── 마법진 로딩 애니메이션 ────────────────────────────────
 function MagicCircleLoader({ keywords }) {
-  const outerDots = Array.from({ length: 8 }, (_, i) => {
-    const a = (i * 45 - 90) * Math.PI / 180
-    return { x: +(80 * Math.cos(a)).toFixed(2), y: +(80 * Math.sin(a)).toFixed(2) }
-  })
-  const hexPts = Array.from({ length: 6 }, (_, i) => {
+  const R = 76, r = 44
+
+  // 육각형 꼭짓점
+  const hex = Array.from({ length: 6 }, (_, i) => {
     const a = (i * 60 - 90) * Math.PI / 180
-    return `${+(56 * Math.cos(a)).toFixed(2)},${+(56 * Math.sin(a)).toFixed(2)}`
-  }).join(' ')
-  const triPts = Array.from({ length: 3 }, (_, i) => {
-    const a = (i * 120 - 90) * Math.PI / 180
-    return `${+(32 * Math.cos(a)).toFixed(2)},${+(32 * Math.sin(a)).toFixed(2)}`
-  }).join(' ')
-  const starPts = Array.from({ length: 5 }, (_, i) => {
-    const outer = (i * 72 - 90) * Math.PI / 180
-    const inner = ((i * 72 + 36) - 90) * Math.PI / 180
-    const ox = +(44 * Math.cos(outer)).toFixed(2)
-    const oy = +(44 * Math.sin(outer)).toFixed(2)
-    const ix = +(22 * Math.cos(inner)).toFixed(2)
-    const iy = +(22 * Math.sin(inner)).toFixed(2)
-    return `${ox},${oy} ${ix},${iy}`
-  }).join(' ')
-  const radials = Array.from({ length: 12 }, (_, i) => {
-    const a = (i * 30) * Math.PI / 180
-    return { x: +(80 * Math.cos(a)).toFixed(2), y: +(80 * Math.sin(a)).toFixed(2) }
+    return [+(R * Math.cos(a)).toFixed(1), +(R * Math.sin(a)).toFixed(1)]
   })
+  // 삼각형 꼭짓점
+  const tri = Array.from({ length: 3 }, (_, i) => {
+    const a = (i * 120 - 90) * Math.PI / 180
+    return [+(r * Math.cos(a)).toFixed(1), +(r * Math.sin(a)).toFixed(1)]
+  })
+
+  const hexPts     = hex.map(p => p.join(',')).join(' ')
+  const triPts     = tri.map(p => p.join(',')).join(' ')
+  const hexPerim   = Math.round(6 * R)                        // 456
+  const triPerim   = Math.round(3 * r * Math.sqrt(3))         // 229
+  const outerPerim = Math.round(2 * Math.PI * (R + 12))       // 553
+  const innerPerim = Math.round(2 * Math.PI * 22)             // 138
+
+  // 타이밍 상수
+  const BUILD  = 2.4   // 구성 완료 시점 (s)
+  const ACCEL  = 4.5   // 가속 구간 길이 (s)
+  const STEADY = BUILD + ACCEL  // 등속 시작 (s) = 6.9
+
+  // 가속 keyframe: 등가속도 운동 → CW 1080°(3바퀴), CCW -720°(2바퀴) 종료
+  // 종료값이 360의 배수 → spin 전환 시 위치 점프 없음
+  const cwKf = [
+    [0, 0], [11.1, 13], [22.2, 53], [33.3, 120],
+    [44.4, 213], [55.6, 333], [66.7, 480],
+    [77.8, 653], [88.9, 853], [100, 1080],
+  ]
+  const ccwKf = [
+    [0, 0], [11.1, -9], [22.2, -36], [33.3, -80],
+    [44.4, -142], [55.6, -222], [66.7, -320],
+    [77.8, -435], [88.9, -568], [100, -720],
+  ]
+  const toKf = (pairs) => pairs.map(([p, d]) => `${p}% { transform: rotate(${d}deg); }`).join('\n          ')
 
   return (
     <div className="flex flex-col items-center gap-4 py-4">
-      <svg width="210" height="210" viewBox="-105 -105 210 210" style={{ overflow: 'visible' }}>
+      <style>{`
+        @keyframes mc-fade    { to { opacity: 1; } }
+        @keyframes mc-hex-draw {
+          from { stroke-dashoffset: ${hexPerim}; }
+          to   { stroke-dashoffset: 0; }
+        }
+        @keyframes mc-tri-draw {
+          from { stroke-dashoffset: ${triPerim}; }
+          to   { stroke-dashoffset: 0; }
+        }
+        @keyframes mc-ring-out {
+          from { stroke-dashoffset: ${outerPerim}; }
+          to   { stroke-dashoffset: 0; }
+        }
+        @keyframes mc-ring-in {
+          from { stroke-dashoffset: ${innerPerim}; }
+          to   { stroke-dashoffset: 0; }
+        }
+        @keyframes mc-accel-cw  { ${toKf(cwKf)}  }
+        @keyframes mc-accel-ccw { ${toKf(ccwKf)} }
+        @keyframes mc-spin-cw   { to { transform: rotate(360deg);  } }
+        @keyframes mc-spin-ccw  { to { transform: rotate(-360deg); } }
+        @keyframes mc-pulse {
+          0%, 100% { transform: scale(0.85); }
+          50%      { transform: scale(1.18); }
+        }
+      `}</style>
+
+      <svg width="210" height="210" viewBox="-105 -105 210 210">
         <defs>
-          <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.3"/>
-            <stop offset="100%" stopColor="#6366f1" stopOpacity="0"/>
-          </radialGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          <filter id="mc-glow">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
           </filter>
         </defs>
 
-        {/* 배경 글로우 */}
-        <circle r="90" fill="url(#glowGrad)">
-          <animate attributeName="r" values="80;95;80" dur="3s" repeatCount="indefinite"/>
-          <animate attributeName="opacity" values="0.6;0.3;0.6" dur="3s" repeatCount="indefinite"/>
-        </circle>
-
-        {/* 방사선 */}
-        {radials.map((p, i) => (
-          <line key={i} x1="0" y1="0" x2={p.x} y2={p.y}
-            stroke="#6366f1" strokeWidth="0.4" opacity="0.18"/>
-        ))}
-
-        {/* 외곽 링 + 점 — 시계방향 느리게 */}
-        <g filter="url(#glow)">
-          <circle r="80" fill="none" stroke="#6366f1" strokeWidth="1.5" strokeDasharray="6 5" opacity="0.55">
-            <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="12s" repeatCount="indefinite"/>
-          </circle>
-        </g>
-        <g>
-          <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="12s" repeatCount="indefinite"/>
-          {outerDots.map((d, i) => (
-            <circle key={i} cx={d.x} cy={d.y} r="3.5" fill="#6366f1">
-              <animate attributeName="opacity" values="0.4;1;0.4" dur={`${1.2 + i * 0.15}s`} repeatCount="indefinite"/>
-              <animate attributeName="r" values="2.5;4.5;2.5" dur={`${1.2 + i * 0.15}s`} repeatCount="indefinite"/>
-            </circle>
+        {/* ── 외곽 그룹: 육각형 (시계방향) ── */}
+        <g filter="url(#mc-glow)" style={{
+          transformBox: 'view-box',
+          transformOrigin: 'center',
+          animation: `mc-accel-cw ${ACCEL}s linear ${BUILD}s,
+                      mc-spin-cw 0.75s linear ${STEADY}s infinite`,
+        }}>
+          {/* 외곽 링 — 구성 마지막에 그려짐 */}
+          <circle r={R + 12} fill="none" stroke="#6366f1" strokeWidth="0.8" opacity="0.45"
+            strokeDasharray={outerPerim} strokeDashoffset={outerPerim}
+            style={{ animation: `mc-ring-out 1.1s ease-out 1.9s forwards` }}
+          />
+          {/* 육각형 변 — 꼭짓점 다 나온 후 이음 */}
+          <polygon points={hexPts} fill="none" stroke="#6366f1" strokeWidth="1.8"
+            strokeDasharray={hexPerim} strokeDashoffset={hexPerim}
+            style={{ animation: `mc-hex-draw 1.0s ease-out 1.1s forwards` }}
+          />
+          {/* 꼭짓점 6개 — 순서대로 등장 */}
+          {hex.map(([x, y], i) => (
+            <circle key={i} cx={x} cy={y} r="5.5" fill="#6366f1" opacity="0"
+              style={{ animation: `mc-fade 0.25s ease-out ${0.05 + i * 0.17}s forwards` }}
+            />
           ))}
         </g>
 
-        {/* 육각형 링 — 반시계 */}
-        <g opacity="0.5">
-          <animateTransform attributeName="transform" type="rotate" from="360" to="0" dur="8s" repeatCount="indefinite"/>
-          <circle r="60" fill="none" stroke="#818cf8" strokeWidth="0.8" strokeDasharray="3 7"/>
-          <polygon points={hexPts} fill="none" stroke="#818cf8" strokeWidth="1.2"/>
+        {/* ── 내부 그룹: 삼각형 (반시계방향) ── */}
+        <g filter="url(#mc-glow)" style={{
+          transformBox: 'view-box',
+          transformOrigin: 'center',
+          animation: `mc-accel-ccw ${ACCEL}s linear ${BUILD}s,
+                      mc-spin-ccw 1.1s linear ${STEADY}s infinite`,
+        }}>
+          {/* 내부 링 */}
+          <circle r={22} fill="none" stroke="#a5b4fc" strokeWidth="1.2"
+            strokeDasharray={innerPerim} strokeDashoffset={innerPerim}
+            style={{ animation: `mc-ring-in 0.65s ease-out 2.0s forwards` }}
+          />
+          {/* 삼각형 변 */}
+          <polygon points={triPts} fill="none" stroke="#818cf8" strokeWidth="2"
+            strokeDasharray={triPerim} strokeDashoffset={triPerim}
+            style={{ animation: `mc-tri-draw 0.8s ease-out 1.6s forwards` }}
+          />
+          {/* 꼭짓점 3개 */}
+          {tri.map(([x, y], i) => (
+            <circle key={i} cx={x} cy={y} r="5" fill="#818cf8" opacity="0"
+              style={{ animation: `mc-fade 0.25s ease-out ${0.9 + i * 0.2}s forwards` }}
+            />
+          ))}
         </g>
 
-        {/* 오각형 별 + 링 — 시계방향 중간속도 */}
-        <g opacity="0.65">
-          <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="6s" repeatCount="indefinite"/>
-          <circle r="44" fill="none" stroke="#a5b4fc" strokeWidth="1" strokeDasharray="4 3"/>
-          <polygon points={starPts} fill="none" stroke="#a5b4fc" strokeWidth="1.5"/>
+        {/* ── 중심 ── */}
+        <g style={{
+          transformBox: 'view-box',
+          transformOrigin: 'center',
+          animation: `mc-pulse 1.4s ease-in-out ${BUILD}s infinite`,
+        }}>
+          <circle r="9" fill="#4f46e5" opacity="0" filter="url(#mc-glow)"
+            style={{ animation: `mc-fade 0.3s ease-out 0s forwards` }}
+          />
+          <circle r="3.5" fill="white" opacity="0"
+            style={{ animation: `mc-fade 0.3s ease-out 0.12s forwards` }}
+          />
         </g>
-
-        {/* 삼각형 — 반시계 빠르게 */}
-        <g opacity="0.75" filter="url(#glow)">
-          <animateTransform attributeName="transform" type="rotate" from="360" to="0" dur="3.5s" repeatCount="indefinite"/>
-          <circle r="32" fill="none" stroke="#818cf8" strokeWidth="1.5"/>
-          <polygon points={triPts} fill="none" stroke="#c7d2fe" strokeWidth="2"/>
-        </g>
-
-        {/* 이너 링 — 시계방향 빠르게 */}
-        <g>
-          <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="2s" repeatCount="indefinite"/>
-          <circle r="16" fill="none" stroke="#6366f1" strokeWidth="2.5" opacity="0.9"/>
-        </g>
-
-        {/* 중심 글로우 퍼짐 */}
-        <circle r="16" fill="none" stroke="#818cf8" strokeWidth="6" opacity="0">
-          <animate attributeName="r" values="10;28;10" dur="2s" repeatCount="indefinite"/>
-          <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite"/>
-        </circle>
-
-        {/* 중심 */}
-        <circle r="9" fill="#4f46e5" filter="url(#glow)">
-          <animate attributeName="r" values="7;11;7" dur="1.5s" repeatCount="indefinite"/>
-        </circle>
-        <circle r="3.5" fill="white" opacity="0.95"/>
       </svg>
 
       <div className="text-center space-y-1.5">
