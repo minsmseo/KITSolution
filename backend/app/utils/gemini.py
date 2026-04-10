@@ -57,13 +57,14 @@ Generate the assignment now:"""
 
     model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
     client = _get_client()
+
     for attempt in range(4):
         try:
             response = client.models.generate_content(model=model_name, contents=prompt)
             return response.text
         except Exception as e:
             if attempt < 3 and ("503" in str(e) or "UNAVAILABLE" in str(e) or "429" in str(e)):
-                await asyncio.sleep(5 * (attempt + 1))
+                await asyncio.sleep(3 * (attempt + 1))
                 continue
             raise
 

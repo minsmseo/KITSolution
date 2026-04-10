@@ -13,7 +13,7 @@ export default function NodeDetailPanel({ node, graphData, selectedNodes, onTogg
   const relatedNodes = (graphData?.nodes || []).filter((n) => relatedNodeIds.includes(n.id))
 
   return (
-    <div className="absolute top-4 right-4 w-72 card shadow-lg z-10">
+    <div className="absolute top-4 right-4 w-72 card shadow-lg z-10" onClick={e => e.stopPropagation()}>
       <div className="flex items-start justify-between p-4 border-b border-slate-100">
         <div>
           <h3 className="font-semibold text-slate-900">{node.label || node.name}</h3>

@@ -211,7 +211,7 @@ export default function LectureDetail() {
 
   useEffect(() => { fetchLecture() }, [fetchLecture])
 
-  const handleNodeClick = (node) => setActiveNode(node)
+  const handleNodeClick = (node) => setActiveNode(prev => prev?.id === node.id ? null : node)
   const handleToggleSelect = (nodeId) => {
     const node = graphData?.nodes.find(n => n.id === nodeId)
     const label = node?.label || nodeId
@@ -313,7 +313,7 @@ export default function LectureDetail() {
                   )}
                 </div>
               ) : (
-                <div className="relative" style={{ height: 480 }}>
+                <div className="relative" style={{ height: 480 }} onClick={() => setActiveNode(null)}>
                   <KnowledgeGraph
                     graphData={graphData}
                     selectedNodes={selectedNodes.map(kw => graphData?.nodes.find(n => n.label === kw)?.id).filter(Boolean)}
