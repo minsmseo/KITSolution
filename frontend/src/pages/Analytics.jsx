@@ -17,6 +17,7 @@ const LEVEL_CONFIG = {
 export default function Analytics() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [expandedInstructor, setExpandedInstructor] = useState({})
   const [expandedLecture, setExpandedLecture] = useState({})
   const [studentData, setStudentData] = useState({}) // lecture_id -> data
@@ -25,7 +26,7 @@ export default function Analytics() {
   useEffect(() => {
     analyticsAPI.allInstructors()
       .then((res) => setData(res.data))
-      .catch(() => {})
+      .catch((err) => setError(err.response?.status || 'error'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -58,9 +59,25 @@ export default function Analytics() {
     )
   }
 
+  if (error) {
+    return (
+      <AppLayout title="학습 참여 분석">
+        <div className="card p-8 text-center text-red-500">
+          <AlertCircle size={36} className="mx-auto mb-3 opacity-60" />
+          <p className="font-semibold">데이터를 불러오지 못했습니다</p>
+          <p className="text-sm text-slate-400 mt-1">
+            {error === 404 ? 'API 엔드포인트를 찾을 수 없습니다 (백엔드 재배포 필요)' :
+             error === 403 ? '접근 권한이 없습니다' :
+             `서버 오류 (${error})`}
+          </p>
+        </div>
+      </AppLayout>
+    )
+  }
+
   const instructors = data?.instructors || []
-  const totalStudents = instructors.reduce((s, i) => s + i.total_students, 0)
-  const totalParticipating = instructors.reduce((s, i) => s + i.total_participating, 0)
+  const totalStudents = data?.total_distinct_students ?? 0
+  const totalParticipating = data?.total_participating_students ?? 0
   const overallRate = totalStudents > 0 ? (totalParticipating / totalStudents * 100).toFixed(1) : '0.0'
 
   return (
@@ -96,14 +113,11 @@ export default function Analytics() {
                   <p className="font-semibold text-slate-900 text-sm truncate">{instructor.instructor_name}</p>
                   <p className="text-xs text-slate-500 truncate hidden sm:block">{instructor.instructor_email}</p>
                 </div>
-                {/* Metrics — responsive */}
+                {/* 강의 수만 표시 */}
                 <div className="hidden md:flex items-center gap-6 text-sm flex-shrink-0">
                   <Metric label="강의" value={instructor.lectures.length} />
-                  <Metric label="학생" value={instructor.total_students} />
-                  <Metric label="참여" value={instructor.total_participating} />
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <ParticipationBadge rate={instructor.overall_participation_rate} />
                   {expandedInstructor[instructor.instructor_id]
                     ? <ChevronDown size={16} className="text-slate-400" />
                     : <ChevronRight size={16} className="text-slate-400" />
@@ -114,9 +128,7 @@ export default function Analytics() {
               {/* Mobile metrics */}
               {expandedInstructor[instructor.instructor_id] && (
                 <div className="md:hidden flex gap-4 px-4 pb-2 text-xs text-slate-500">
-                  <span>강의 {instructor.lectures.length}</span>
-                  <span>학생 {instructor.total_students}</span>
-                  <span>참여 {instructor.total_participating}</span>
+                  <span>강의 {instructor.lectures.length}개</span>
                 </div>
               )}
 

@@ -7,7 +7,6 @@ from app.schemas.analytics import LectureParticipation, InstructorAnalytics, Ana
 
 
 async def get_all_analytics(db: AsyncSession) -> AnalyticsSummary:
-    # Get all instructors
     result = await db.execute(
         select(User).where(User.role == UserRole.instructor)
     )
@@ -18,7 +17,22 @@ async def get_all_analytics(db: AsyncSession) -> AnalyticsSummary:
         inst_analytics = await get_instructor_analytics(instructor.id, db)
         analytics_list.append(inst_analytics)
 
-    return AnalyticsSummary(instructors=analytics_list)
+    # Platform-wide distinct student count
+    total_distinct = await db.execute(
+        select(func.count(distinct(Enrollment.student_id)))
+    )
+    total_distinct_students = total_distinct.scalar() or 0
+
+    total_distinct_participating = await db.execute(
+        select(func.count(distinct(Submission.student_id)))
+    )
+    total_participating_students = total_distinct_participating.scalar() or 0
+
+    return AnalyticsSummary(
+        instructors=analytics_list,
+        total_distinct_students=total_distinct_students,
+        total_participating_students=total_participating_students,
+    )
 
 
 async def get_instructor_analytics(instructor_id: str, db: AsyncSession) -> InstructorAnalytics:
@@ -31,14 +45,25 @@ async def get_instructor_analytics(instructor_id: str, db: AsyncSession) -> Inst
     lectures = result.scalars().all()
 
     lecture_stats = []
-    total_students_all = 0
-    total_participating_all = 0
-
     for lecture in lectures:
         stats = await get_lecture_participation(lecture.id, db)
         lecture_stats.append(stats)
-        total_students_all += stats.total_students
-        total_participating_all += stats.participating_students
+
+    # DISTINCT students enrolled in any lecture under this instructor
+    distinct_students = await db.execute(
+        select(func.count(distinct(Enrollment.student_id)))
+        .join(Lecture, Lecture.id == Enrollment.lecture_id)
+        .where(Lecture.instructor_id == instructor_id)
+    )
+    total_students_all = distinct_students.scalar() or 0
+
+    # DISTINCT students who submitted at least once under this instructor
+    distinct_participating = await db.execute(
+        select(func.count(distinct(Submission.student_id)))
+        .join(Lecture, Lecture.id == Submission.lecture_id)
+        .where(Lecture.instructor_id == instructor_id)
+    )
+    total_participating_all = distinct_participating.scalar() or 0
 
     overall_rate = (
         total_participating_all / total_students_all if total_students_all > 0 else 0.0
@@ -65,14 +90,14 @@ async def get_lecture_participation(lecture_id: str, db: AsyncSession) -> Lectur
     )
     total_students = total_result.scalar() or 0
 
-    # Students who both generated AND submitted
-    submitted_student_ids = (
-        select(distinct(Submission.student_id)).where(Submission.lecture_id == lecture_id)
-    )
+    # Students who are enrolled AND both generated AND submitted
+    enrolled_ids = select(distinct(Enrollment.student_id)).where(Enrollment.lecture_id == lecture_id)
+    submitted_ids = select(distinct(Submission.student_id)).where(Submission.lecture_id == lecture_id)
     generated_and_submitted = await db.execute(
         select(func.count(distinct(AssignmentGeneration.student_id))).where(
             AssignmentGeneration.lecture_id == lecture_id,
-            AssignmentGeneration.student_id.in_(submitted_student_ids),
+            AssignmentGeneration.student_id.in_(enrolled_ids),
+            AssignmentGeneration.student_id.in_(submitted_ids),
         )
     )
     participating_students = generated_and_submitted.scalar() or 0

@@ -25,6 +25,8 @@ class InstructorAnalytics(BaseModel):
 
 class AnalyticsSummary(BaseModel):
     instructors: list[InstructorAnalytics]
+    total_distinct_students: int = 0
+    total_participating_students: int = 0
 
 
 class StudentEngagement(BaseModel):

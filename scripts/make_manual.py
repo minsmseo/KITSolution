@@ -1,4 +1,5 @@
-"""Generate RE:Node user manual as .docx"""
+"""Generate RE:Node user manual as .docx with screenshots"""
+import os
 from docx import Document
 from docx.shared import Pt, RGBColor, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -14,13 +15,16 @@ for section in doc.sections:
     section.left_margin = Cm(2.5)
     section.right_margin = Cm(2.5)
 
-BLUE      = RGBColor(0x1d, 0x4e, 0xd8)
-DBLUE     = RGBColor(0x1e, 0x40, 0xaf)
-MBLUE     = RGBColor(0x37, 0x51, 0xcb)
-WHITE     = RGBColor(0xff, 0xff, 0xff)
-GRAY      = RGBColor(0x64, 0x74, 0x8b)
-LGRAY     = RGBColor(0x94, 0xa3, 0xb8)
-FONT      = '맑은 고딕'
+BLUE  = RGBColor(0x1d, 0x4e, 0xd8)
+DBLUE = RGBColor(0x1e, 0x40, 0xaf)
+MBLUE = RGBColor(0x37, 0x51, 0xcb)
+WHITE = RGBColor(0xff, 0xff, 0xff)
+GRAY  = RGBColor(0x64, 0x74, 0x8b)
+LGRAY = RGBColor(0x94, 0xa3, 0xb8)
+FONT  = '맑은 고딕'
+
+SS = 'docs/screenshots'  # screenshot base dir
+
 
 def set_font(run, size=10, bold=False, color=None):
     run.font.name = FONT
@@ -29,12 +33,14 @@ def set_font(run, size=10, bold=False, color=None):
     if color:
         run.font.color.rgb = color
 
+
 def h1(text):
     p = doc.add_heading(level=1)
     p.clear()
     run = p.add_run(text)
     set_font(run, 16, True, BLUE)
     return p
+
 
 def h2(text):
     p = doc.add_heading(level=2)
@@ -43,12 +49,14 @@ def h2(text):
     set_font(run, 13, True, DBLUE)
     return p
 
+
 def h3(text):
     p = doc.add_heading(level=3)
     p.clear()
     run = p.add_run(text)
     set_font(run, 11, True, MBLUE)
     return p
+
 
 def body(text, bold=False, indent=False, color=None):
     p = doc.add_paragraph()
@@ -58,6 +66,7 @@ def body(text, bold=False, indent=False, color=None):
     set_font(run, 10, bold, color)
     return p
 
+
 def bullet(text, level=0):
     p = doc.add_paragraph(style='List Bullet')
     p.paragraph_format.left_indent = Cm(0.5 + level * 0.5)
@@ -65,8 +74,30 @@ def bullet(text, level=0):
     set_font(run, 10)
     return p
 
+
 def sep():
     doc.add_paragraph()
+
+
+def screenshot(path, caption=None, width_cm=14):
+    """Insert screenshot with optional caption."""
+    full = os.path.join(path) if os.path.isabs(path) else path
+    if not os.path.exists(full):
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p.add_run(f'[이미지 없음: {full}]')
+        set_font(run, 9, color=LGRAY)
+        return
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run()
+    run.add_picture(full, width=Cm(width_cm))
+    if caption:
+        pc = doc.add_paragraph()
+        pc.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        rc = pc.add_run(f'▲ {caption}')
+        set_font(rc, 8, color=GRAY)
+
 
 def shade_cell(cell, fill_hex):
     tc = cell._tc
@@ -76,6 +107,7 @@ def shade_cell(cell, fill_hex):
     shd.set(qn('w:color'), 'auto')
     shd.set(qn('w:fill'), fill_hex)
     tcPr.append(shd)
+
 
 def table(headers, rows):
     t = doc.add_table(rows=1 + len(rows), cols=len(headers))
@@ -99,7 +131,10 @@ def table(headers, rows):
             set_font(run, 9)
     return t
 
-# ─── Cover ───────────────────────────────────────────────
+
+# ──────────────────────────────────────────────────────────────
+# Cover
+# ──────────────────────────────────────────────────────────────
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 run = p.add_run('RE:Node 사용자 매뉴얼')
@@ -117,7 +152,9 @@ set_font(run3, 10, False, LGRAY)
 
 doc.add_page_break()
 
-# ─── 1. 플랫폼 소개 ──────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+# 1. 플랫폼 소개
+# ──────────────────────────────────────────────────────────────
 h1('1. 플랫폼 소개')
 body('RE:Node는 KoreaIT Academy의 AI 기반 적응형 학습 플랫폼입니다. 강사가 업로드한 강의 텍스트를 Google Gemini AI가 분석하여 지식 그래프를 자동 생성하고, 학생이 원하는 개념을 선택하면 맞춤형 복습 과제를 즉시 생성합니다.')
 sep()
@@ -141,167 +178,207 @@ table(
 )
 sep()
 
-# ─── 2. 시작하기 ─────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+# 2. 시작하기
+# ──────────────────────────────────────────────────────────────
 doc.add_page_break()
 h1('2. 시작하기')
 
-h2('2.1 접속 방법')
-body('웹 브라우저(Chrome 권장)에서 아래 URL로 접속합니다.')
-body('https://revmap-frontend-1004217999763.asia-northeast3.run.app', bold=True, indent=True)
-sep()
-
-h2('2.2 로그인')
+h2('2.1 접속 및 로그인')
+bullet('웹 브라우저(Chrome 권장)에서 플랫폼 URL로 접속합니다.')
 bullet('이메일과 비밀번호를 입력하고 [로그인] 버튼을 클릭합니다.')
-bullet('로그인 화면 좌측에는 RE:Node 지식 그래프 애니메이션이 실시간 표시됩니다.')
+bullet('좌측 패널에는 RE:Node 지식 그래프 애니메이션이 실시간으로 표시됩니다.')
 bullet('계정이 없으면 [회원가입] 링크를 클릭해 계정을 생성합니다.')
 sep()
+screenshot(f'{SS}/student/01_login.png', '로그인 화면')
+sep()
 
-h2('2.3 테스트 계정 (모든 계정 초기 비밀번호: 1234)')
+h2('2.2 테스트 계정 (모든 계정 초기 비밀번호: 1234)')
 table(
-    ['역할', '이메일'],
+    ['역할', '이름', '이메일'],
     [
-        ['관리자', 'admin@renode.io'],
-        ['강사1 (Python/Java/C/C++/SQL/자료구조)', 'teacher1@renode.io'],
-        ['강사2 (네트워크/OS/알고리즘/컴퓨터구조)', 'teacher2@renode.io'],
-        ['학생1 (teacher1 수강생)', 'student1@renode.io'],
-        ['학생2 (teacher1 수강생)', 'student2@renode.io'],
-        ['학생3 (teacher2 수강생)', 'student3@renode.io'],
-        ['학생4 (teacher2 수강생)', 'student4@renode.io'],
-        ['매니저', 'manager1@renode.io'],
+        ['관리자', '관리자', 'admin@renode.io'],
+        ['강사1', '선생1', 'teacher1@renode.io'],
+        ['강사2', '선생2', 'teacher2@renode.io'],
+        ['학생1', '학생1', 'student1@renode.io'],
+        ['학생2', '학생2', 'student2@renode.io'],
+        ['학생3', '학생3', 'student3@renode.io'],
+        ['학생4', '학생4', 'student4@renode.io'],
+        ['매니저', '매니저1', 'manager1@renode.io'],
     ]
 )
 sep()
 
-h2('2.4 모바일 사용')
-bullet('상단 햄버거 메뉴(≡)를 탭하면 사이드바가 열립니다.')
+h2('2.3 모바일 사용')
+bullet('상단 햄버거 메뉴(≡)를 탭하면 사이드바가 슬라이드로 열립니다.')
 bullet('사이드바를 왼쪽으로 드래그하거나 바깥 영역을 탭하면 닫힙니다.')
 
-# ─── 3. 학생 매뉴얼 ──────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+# 3. 학생 매뉴얼
+# ──────────────────────────────────────────────────────────────
 doc.add_page_break()
 h1('3. 학생 매뉴얼')
 
 h2('3.1 대시보드')
-bullet('로그인 후 내 강의 현황 카드(전체 강의, 활성 그래프)를 확인합니다.')
+bullet('로그인 후 수강 중인 강의 현황 카드(전체 강의, 활성 그래프, 처리 중)를 확인합니다.')
 bullet('[내 강의 →] 버튼으로 수강 강의 목록으로 이동합니다.')
 bullet('최근 강의 목록에서 강의 상세 페이지로 바로 접근할 수 있습니다.')
 sep()
+screenshot(f'{SS}/common/01_dashboard.png', '학생 대시보드')
+sep()
 
-h2('3.2 강의 탐색')
-bullet('[내 강의] 또는 [강의 목록] 메뉴에서 수강 강의를 확인합니다.')
-bullet('강의 카드 클릭 → 강의 상세 페이지로 이동합니다.')
+h2('3.2 내 강의 목록')
+bullet('[내 강의] 메뉴에서 수강 중인 강의를 카드 형태로 확인합니다.')
+bullet('각 카드에는 강의명, 설명, 그래프 상태(완료/처리중/대기)가 표시됩니다.')
+bullet('카드를 클릭하면 강의 상세 페이지로 이동합니다.')
+sep()
+screenshot(f'{SS}/student/02_my_classes.png', '내 강의 목록')
 sep()
 
 h2('3.3 지식 그래프 탐색')
-bullet('각 원(노드)이 하나의 개념을 나타냅니다.')
-bullet('노드를 클릭하면 개념 설명과 연결된 개념을 확인할 수 있습니다.')
-bullet('복습하고 싶은 개념을 클릭하여 선택합니다 (선택 시 색상 변경).')
+bullet('강의 상세 페이지에 진입하면 지식 그래프가 자동으로 표시됩니다.')
+bullet('각 원(노드)이 하나의 개념을 나타내며, 선(엣지)은 개념 간 연결 관계입니다.')
+bullet('노드를 클릭하면 복습할 개념으로 선택됩니다 (선택 시 주황색으로 변경).')
 bullet('여러 개념을 동시에 선택하면 통합 과제를 생성할 수 있습니다.')
-bullet('우측 [전체 개념] 패널의 버튼으로도 개념을 선택할 수 있습니다.')
+bullet('우측 [전체 개념] 패널의 태그 버튼으로도 개념을 선택할 수 있습니다.')
+sep()
+screenshot(f'{SS}/student/03_lecture_graph.png', '지식 그래프 및 과제 생성 패널')
 sep()
 
 h2('3.4 AI 과제 생성')
 bullet('개념 노드를 1개 이상 선택합니다.')
-bullet('우측 패널에서 [과제 유형]을 선택합니다.')
-body('과제 유형: 단답형 / 개념 설명 / 비교·대조 / 요약 / 미니퀴즈', indent=True)
-bullet('[난이도]를 선택합니다 (쉬움 / 보통 / 어려움).')
-bullet('[과제 생성] 버튼 클릭 → AI가 30초 이내에 과제를 생성합니다.')
+bullet('우측 패널에서 [Assignment Type]을 선택합니다.')
+body('  - Short Answer Questions (단답형)', indent=True)
+body('  - Concept Explanation (개념 설명)', indent=True)
+body('  - Compare & Contrast (비교·대조)', indent=True)
+body('  - Summary (요약)', indent=True)
+body('  - Mini Quiz (미니퀴즈)', indent=True)
+bullet('[Difficulty]를 선택합니다: Easy / Medium / Hard')
+bullet('[Generate Assignment] 버튼 클릭 → AI가 과제를 생성합니다 (최대 30초 소요).')
+sep()
+screenshot(f'{SS}/student/04_assignment.png', '생성된 AI 과제')
 sep()
 
 h2('3.5 답안 제출')
-bullet('생성된 과제 내용을 확인합니다.')
-bullet('텍스트 영역에 답안을 작성합니다.')
-bullet('[제출] 버튼을 클릭하면 답안이 저장됩니다.')
-bullet('제출된 답안은 담당 강사가 확인할 수 있습니다.')
+bullet('생성된 과제 내용을 꼼꼼히 읽습니다.')
+bullet('[Your Answer] 텍스트 영역에 답안을 작성합니다.')
+bullet('[Submit Answer] 버튼을 클릭하면 답안이 저장됩니다.')
+bullet('"Answer submitted successfully!" 메시지가 표시되면 제출 완료입니다.')
+bullet('제출된 답안은 담당 강사가 학생 과제 현황에서 확인할 수 있습니다.')
+sep()
+screenshot(f'{SS}/student/05_submitted.png', '답안 제출 완료')
 
-# ─── 4. 강사 매뉴얼 ──────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+# 4. 강사 매뉴얼
+# ──────────────────────────────────────────────────────────────
 doc.add_page_break()
 h1('4. 강사 매뉴얼')
 
 h2('4.1 강의 생성')
-bullet('[내 강의] 메뉴 → [새 강의] 버튼 클릭')
-bullet('강의 제목과 설명을 입력하고 [생성] 클릭')
+bullet('[내 강의] 메뉴로 이동합니다.')
+bullet('우측 상단 [+ 새 강의] 버튼을 클릭합니다.')
+bullet('강의 제목과 설명을 입력하고 [생성]을 클릭합니다.')
+bullet('생성된 강의가 카드 목록에 추가됩니다.')
+sep()
+screenshot(f'{SS}/instructor/01_my_classes.png', '강사 - 내 강의 목록 (새 강의 생성 버튼)')
 sep()
 
 h2('4.2 강의 텍스트 업로드 및 그래프 생성')
-bullet('강의 상세 페이지 상단 [강의 텍스트 업로드] 패널을 펼칩니다.')
-bullet('강의 내용 텍스트를 붙여넣기 합니다 (최대 50,000자).')
-bullet('[업로드] 버튼 클릭 후 [그래프 생성] 버튼을 클릭합니다.')
-bullet('AI가 개념과 연결 관계를 자동으로 추출합니다.')
-bullet('생성 완료(상태: 완료) 후 지식 그래프가 화면에 표시됩니다.')
+bullet('강의 카드를 클릭해 강의 상세 페이지로 이동합니다.')
+bullet('[Lecture Material] 섹션에 강의 내용 텍스트를 붙여넣습니다 (최대 50,000자).')
+bullet('[Import .txt] 버튼으로 텍스트 파일을 직접 불러올 수도 있습니다.')
+bullet('[Save Text] 버튼으로 텍스트를 저장합니다.')
+bullet('[지식 그래프] 섹션의 생성 버튼을 클릭하면 AI가 개념과 연결 관계를 자동 추출합니다.')
+bullet('상태가 "완료"로 바뀌면 지식 그래프가 생성된 것입니다.')
+sep()
+screenshot(f'{SS}/instructor/02_lecture_upload.png', '강의 텍스트 업로드 화면')
 sep()
 
 h2('4.3 학생 과제 현황 조회')
-body('강의 상세 페이지 상단 탭에서 [학생 과제 현황]을 클릭합니다.')
-bullet('학생 목록: 이름, 과제 생성 수, 제출 수, 참여 상태를 확인합니다.')
-bullet('학생 이름 클릭: 해당 학생의 과제 목록이 펼쳐집니다.')
-bullet('과제 항목 클릭: 생성된 과제 내용과 제출 답안을 동시에 확인합니다.')
-body('제출 여부: 초록 체크(✓) = 제출완료 / 회색 원(○) = 미제출', indent=True)
+bullet('강의 상세 페이지 상단 탭에서 [학생 과제 현황]을 클릭합니다.')
+bullet('수강생 목록에서 이름, 과제 생성 수, 제출 수, 참여 상태를 확인합니다.')
+bullet('학생 이름 행을 클릭하면 해당 학생의 과제 목록이 펼쳐집니다.')
+bullet('과제 항목을 클릭하면 생성된 과제 내용과 제출 답안을 동시에 확인합니다.')
+body('  ✓ 초록 체크 = 제출 완료  /  ○ 회색 원 = 미제출', indent=True)
+sep()
+screenshot(f'{SS}/instructor/03_student_status.png', '학생 과제 현황 탭')
 
-# ─── 5. 매니저 매뉴얼 ────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+# 5. 매니저 매뉴얼
+# ──────────────────────────────────────────────────────────────
 doc.add_page_break()
 h1('5. 매니저 매뉴얼')
 
 h2('5.1 분석 대시보드')
-bullet('좌측 메뉴 [분석] 클릭')
-bullet('상단 요약 카드: 강사 수 / 전체 학생 수 / 참여 학생 수 / 전체 참여율')
+bullet('좌측 메뉴 [분석]을 클릭합니다.')
+bullet('상단 요약 카드에서 강사 수 / 전체 학생 수 / 참여 학생 수 / 전체 참여율을 확인합니다.')
+sep()
+screenshot(f'{SS}/manager/01_analytics.png', '매니저 - 학습 참여 분석 대시보드')
 sep()
 
 h2('5.2 강사별 현황')
-bullet('강사 카드 클릭 → 해당 강사의 강의 목록이 펼쳐집니다.')
+bullet('강사 카드를 클릭하면 해당 강사의 강의 목록이 펼쳐집니다.')
 bullet('각 강의의 수강생 수, 참여 학생, 과제 수, 제출 수, 참여율을 확인합니다.')
-body('참여율 색상: 70% 이상(초록) / 40~70%(노랑) / 40% 미만(빨강)', indent=True)
+body('참여율 색상 기준:', bold=True, indent=True)
+body('  - 70% 이상: 초록 (우수)', indent=True)
+body('  - 40~70%: 노랑 (보통)', indent=True)
+body('  - 40% 미만: 빨강 (주의)', indent=True)
 sep()
 
 h2('5.3 학생별 참여도 드릴다운')
-bullet('강의 행 클릭 → 수강생 참여 현황이 펼쳐집니다.')
-body('참여 수준 기준:', indent=True, bold=True)
-body('  - 높음: 과제 3건 이상 & 제출 2건 이상', indent=True)
-body('  - 보통: 과제·제출 각 1건 이상', indent=True)
-body('  - 낮음: 과제 생성만 있음', indent=True)
-body('  - 미참여: 과제·제출 모두 없음', indent=True)
+bullet('강의 행을 클릭하면 수강생 참여 현황이 펼쳐집니다.')
+body('참여 수준 기준:', bold=True, indent=True)
+body('  - 높음 (초록): 과제 3건 이상 & 제출 2건 이상', indent=True)
+body('  - 보통 (파랑): 과제·제출 각 1건 이상', indent=True)
+body('  - 낮음 (노랑): 과제 생성은 있으나 제출 없음', indent=True)
+body('  - 미참여 (회색): 과제·제출 모두 없음', indent=True)
 bullet('학생별 과제 생성 수, 제출 수, 마지막 활동 시간을 확인합니다.')
 bullet('활동 막대 그래프로 상대적 참여도를 시각화합니다.')
 
-# ─── 6. 강의 목록 ────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+# 6. 강의 목록
+# ──────────────────────────────────────────────────────────────
 doc.add_page_break()
 h1('6. 현재 등록 강의 목록')
 
-h2('선생1 담당 강의')
+h2('선생1 담당 강의 (수강생: 학생1, 학생2)')
 table(
-    ['강의명', '노드', '주요 내용'],
+    ['강의명', '노드 수', '주요 내용'],
     [
-        ['Python 프로그래밍: 문법과 알고리즘', '35', '기본 문법, OOP, 자료구조, 정렬/탐색, DP'],
-        ['Java 프로그래밍: 객체지향과 핵심 개념', '26', 'JVM, OOP, 제네릭, 컬렉션, 람다/스트림'],
-        ['C 언어 프로그래밍: 기초부터 시스템까지', '26', '포인터, 메모리, 구조체, 파일 I/O'],
-        ['C++ 프로그래밍: 객체지향과 현대 C++', '26', '스마트포인터, STL, 템플릿, 이동시맨틱'],
-        ['SQL과 데이터베이스: 기초부터 심화까지', '24', 'DDL/DML, JOIN, 인덱스, 트랜잭션, 정규화'],
-        ['자료구조: 핵심 개념과 구현', '23', '배열, 연결리스트, 트리, 힙, 해시, 그래프'],
+        ['Python 프로그래밍: 문법과 알고리즘', '35개', '기본 문법, OOP, 자료구조, 정렬/탐색, DP'],
+        ['Java 프로그래밍: 객체지향과 핵심 개념', '26개', 'JVM, OOP, 제네릭, 컬렉션, 람다/스트림'],
+        ['C 언어 프로그래밍: 기초부터 시스템까지', '26개', '포인터, 메모리, 구조체, 파일 I/O'],
+        ['C++ 프로그래밍: 객체지향과 현대 C++', '26개', '스마트포인터, STL, 템플릿, 이동시맨틱'],
+        ['SQL과 데이터베이스: 기초부터 심화까지', '24개', 'DDL/DML, JOIN, 인덱스, 트랜잭션, 정규화'],
+        ['자료구조: 핵심 개념과 구현', '23개', '배열, 연결리스트, 트리, 힙, 해시, 그래프'],
     ]
 )
 sep()
 
-h2('선생2 담당 강의')
+h2('선생2 담당 강의 (수강생: 학생3, 학생4)')
 table(
-    ['강의명', '노드', '주요 내용'],
+    ['강의명', '노드 수', '주요 내용'],
     [
-        ['컴퓨터 네트워크: 프로토콜과 인터넷 구조', '23', 'OSI 7계층, TCP/IP, HTTP, DNS, TLS'],
-        ['운영체제: 프로세스, 메모리, 파일시스템', '23', '프로세스, 스케줄링, 가상메모리, 동기화'],
-        ['알고리즘: 설계와 분석', '25', '정렬, 그래프탐색, 최단경로, DP, 탐욕'],
-        ['컴퓨터 구조: CPU, 메모리, 명령어', '20', 'CPU, ALU, 파이프라인, 캐시, 메모리계층'],
+        ['컴퓨터 네트워크: 프로토콜과 인터넷 구조', '23개', 'OSI 7계층, TCP/IP, HTTP, DNS, TLS'],
+        ['운영체제: 프로세스, 메모리, 파일시스템', '23개', '프로세스, 스케줄링, 가상메모리, 동기화'],
+        ['알고리즘: 설계와 분석', '25개', '정렬, 그래프탐색, 최단경로, DP, 탐욕'],
+        ['컴퓨터 구조: CPU, 메모리, 명령어', '20개', 'CPU, ALU, 파이프라인, 캐시, 메모리계층'],
     ]
 )
 sep()
 
-# ─── 7. FAQ ──────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+# 7. FAQ
+# ──────────────────────────────────────────────────────────────
 doc.add_page_break()
 h1('7. 자주 묻는 질문 (FAQ)')
 
 h3('Q. 과제 생성이 오래 걸려요.')
-body('A. AI 서버 상태에 따라 처음 요청 시 30초까지 걸릴 수 있습니다. 503 오류 시 자동 재시도되므로 페이지를 닫지 말고 기다려 주세요.')
+body('A. AI 서버 상태에 따라 처음 요청 시 30초까지 걸릴 수 있습니다. 페이지를 닫지 말고 기다려 주세요.')
 sep()
 
 h3('Q. 지식 그래프가 표시되지 않아요.')
-body('A. 강의 상태가 "처리중"이면 그래프 생성 중입니다. 새로고침(↻) 버튼으로 상태를 확인하세요. "대기" 상태라면 강사에게 그래프 생성을 요청하세요.')
+body('A. 강의 상태가 "처리중"이면 생성 중입니다. 새로고침(↻) 버튼으로 상태를 확인하세요. "대기" 상태라면 강사에게 그래프 생성을 요청하세요.')
 sep()
 
 h3('Q. 비밀번호를 변경하고 싶어요.')
@@ -312,7 +389,13 @@ h3('Q. 매니저는 학생 답안을 볼 수 있나요?')
 body('A. 매니저는 참여율·수치 통계만 확인 가능합니다. 과제 내용과 답안은 해당 강사만 조회할 수 있습니다.')
 sep()
 
-# ─── 8. 문의 ─────────────────────────────────────────────
+h3('Q. 강의 목록에 내 강의가 보이지 않아요.')
+body('A. [강의 목록]은 전체 강의이고, [내 강의]는 수강 등록된 강의만 표시됩니다. 강사에게 수강 등록을 요청하세요.')
+sep()
+
+# ──────────────────────────────────────────────────────────────
+# 8. 문의
+# ──────────────────────────────────────────────────────────────
 h1('8. 문의 및 지원')
 bullet('플랫폼 관리자: admin@renode.io')
 bullet('GitHub Issues: 프로젝트 저장소 Issues 탭')

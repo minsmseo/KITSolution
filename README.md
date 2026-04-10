@@ -20,6 +20,16 @@
 
 ---
 
+## 서비스 URL
+
+| 구분 | URL |
+|------|-----|
+| **프론트엔드 (서비스)** | https://revmap-frontend-1004217999763.asia-northeast3.run.app |
+| **백엔드 API** | https://revmap-backend-1004217999763.asia-northeast3.run.app |
+| **API 문서 (Swagger)** | https://revmap-backend-1004217999763.asia-northeast3.run.app/docs |
+
+---
+
 ## 1. 프로젝트 개요
 
 RE:Node는 강사가 업로드한 강의 텍스트를 Gemini AI가 분석하여 **지식 그래프(Knowledge Graph)**를 자동 생성하고, 학생이 원하는 개념 노드를 선택하면 **맞춤형 복습 과제**를 즉시 생성해 주는 플랫폼입니다.
