@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.db.postgres import init_db
 from app.db.neo4j_db import close_driver
-from app.api.routes import auth, lectures, graph, assignments, analytics
+from app.api.routes import auth, lectures, graph, assignments, analytics, admin
 import structlog
 
 logger = structlog.get_logger()
@@ -42,6 +42,7 @@ app.include_router(lectures.router)
 app.include_router(graph.router)
 app.include_router(assignments.router)
 app.include_router(analytics.router)
+app.include_router(admin.router)
 
 
 @app.get("/health")

@@ -63,4 +63,17 @@ export const analyticsAPI = {
   lectureStudents: (id) => api.get(`/analytics/lectures/${id}/students`),
 }
 
+// Admin
+export const adminAPI = {
+  listUsers: (role) => api.get('/admin/users', { params: role && role !== 'all' ? { role } : {} }),
+  createUser: (data) => api.post('/admin/users', data),
+  changeRole: (userId, role) => api.patch(`/admin/users/${userId}/role`, { role }),
+  deleteUser: (userId) => api.delete(`/admin/users/${userId}`),
+  listLectures: () => api.get('/admin/lectures'),
+  createLecture: (data) => api.post('/admin/lectures', data),
+  reassignInstructor: (lectureId, instructorId) =>
+    api.patch(`/admin/lectures/${lectureId}/instructor`, { instructor_id: instructorId }),
+  deleteLecture: (lectureId) => api.delete(`/admin/lectures/${lectureId}`),
+}
+
 export default api
